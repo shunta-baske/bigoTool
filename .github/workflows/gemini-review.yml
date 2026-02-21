@@ -1,0 +1,23 @@
+name: Gemini Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  gemini-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Gemini Code Review
+        uses: rubensflinco/gemini-code-review-action@v1.4.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          model: "gemini-1.5-pro"
+          extra_prompt: "必ず日本語でレビューしてください。コードの改善点、バグの可能性、可読性について指摘し、必要であれば具体的なコード例を提示してください。"
