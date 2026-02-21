@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bingo App - Top</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <header>
+        <h1>💎 Bingo App</h1>
+    </header>
+
+    <div class="container">
+        <div class="card" style="text-align: center;">
+            <h2>ようこそ</h2>
+            <p style="margin-bottom: 20px;">
+                リアルタイムで遊べるビンゴアプリです。<br>
+                まずはユーザー登録（またはログイン）してください。
+            </p>
+
+            <div style="margin-bottom: 20px;">
+                <input type="text" id="registerId" placeholder="希望するユーザーIDを入力">
+            </div>
+            <button id="registerBtn" onclick="registerUser()">新しくユーザー登録して始める</button>
+
+            <div style="margin-top: 30px; border-top: 1px solid var(--border); padding-top: 20px;">
+                <p>すでにIDをお持ちの方はこちらからログイン</p>
+                <input type="text" id="loginId" placeholder="ユーザーIDを入力">
+                <button onclick="loginUser()">ログイン</button>
+            </div>
+        </div>
+
+        <nav>
+            <a href="#" onclick="showAdminLogin(); return false;">管理者ページはこちら</a>
+        </nav>
+
+        <div id="adminLoginArea" class="card" style="display: none; margin-top: 20px; text-align: center;">
+            <h2>管理者ログイン</h2>
+            <input type="password" id="adminIdInput" placeholder="管理者IDを入力">
+            <button onclick="loginAdmin()">ログイン</button>
+        </div>
+    </div>
+
+    <script>
+        // Check if already logged in
+        window.onload = () => {
+            const existingId = localStorage.getItem('bingoUserId');
+            if (existingId) {
+                window.location.href = 'mypage.html';
+            }
+        };
+
+        async function registerUser() {
+            const idInput = document.getElementById('registerId').value.trim();
+            if (!idInput) {
+                alert('希望するユーザーIDを入力してください');
+                return;
+            }
+            if (idInput === 'useradmin') {
+                alert('このIDは登録できません。');
+                return;
+            }
+
+            const btn = document.getElementById('registerBtn');
+            btn.disabled = true;
+            btn.innerText = '登録中...';
+
+            try {
+                const res = await fetch('/api/users/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: idInput })
+                });
+                if (res.ok) {
+                    const user = await res.json();
+                    localStorage.setItem('bingoUserId', user.id);
+                    window.location.href = 'mypage.html';
+                } else if (res.status === 409) {
+                    alert('既に登録されているIDです');
+                    window.location.href = 'index.html';
+                } else {
+                    alert('登録に失敗しました。');
+                    btn.disabled = false;
+                    btn.innerText = '新しくユーザー登録して始める';
+                }
+            } catch (e) {
+                alert('通信エラーが発生しました。');
+                btn.disabled = false;
+                btn.innerText = '新しくユーザー登録して始める';
+            }
+        }
+
+        async function loginUser() {
+            const id = document.getElementById('loginId').value.trim();
+            if (!id) {
+                alert('IDを入力してください');
+                return;
+            }
+            if (id.length === 0) {
+                alert('無効なIDフォーマットです。');
+                return;
+            }
+
+            if (id === 'useradmin') {
+                alert('一般ユーザーのフォームからはログインできません。「管理者ページはこちら」からログインしてください。');
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/users/${id}`);
+                if (res.ok) {
+                    localStorage.setItem('bingoUserId', id);
+                    window.location.href = 'mypage.html';
+                } else {
+                    alert('登録されていないユーザーIDです。');
+                }
+            } catch (e) {
+                alert('通信エラーが発生しました。');
+            }
+        }
+
+        function showAdminLogin() {
+            document.getElementById('adminLoginArea').style.display = 'block';
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        }
+
+        function loginAdmin() {
+            const id = document.getElementById('adminIdInput').value.trim();
+            if (id === 'useradmin') {
+                localStorage.setItem('bingoUserId', id);
+                window.location.href = 'admin.html';
+            } else {
+                alert('管理者IDが間違っています。');
+            }
+        }
+    </script>
+</body>
+
+</html>

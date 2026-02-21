@@ -1,9 +1,10 @@
 package com.example.bingo.entity;
 
-import java.util.UUID;
-
 import jakarta.persistence.*;
 import lombok.Data;
+import java.util.UUID;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
 @Table(name = "topics")
@@ -17,7 +18,14 @@ public class Topic {
     @Column(nullable = false, length = 500)
     private String content;
 
+    @Column(nullable = false)
+    private Integer amount;
+
+    @Column(nullable = false)
+    private Integer difficulty;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "creator_id", nullable = false)
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private User creator;
 }

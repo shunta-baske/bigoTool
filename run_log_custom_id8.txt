@@ -1,0 +1,87 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -------------------------< com.example:bingo >--------------------------
+[INFO] Building bingo 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.3.2:clean (default-clean) @ bingo ---
+[INFO] Deleting /home/shunn/src/java-bingo/bigoTool/target
+[INFO] 
+[INFO] >>> spring-boot:3.2.3:run (default-cli) > test-compile @ bingo >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ bingo ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 5 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ bingo ---
+[INFO] Changes detected - recompiling the module! :source
+[INFO] Compiling 16 source files with javac [debug release 17] to target/classes
+[INFO] Annotation processing is enabled because one or more processors were found
+  on the class path. A future release of javac may disable annotation processing
+  unless at least one processor is specified by name (-processor), or a search
+  path is specified (--processor-path, --processor-module-path), or annotation
+  processing is enabled explicitly (-proc:only, -proc:full).
+  Use -Xlint:-options to suppress this message.
+  Use -proc:none to disable annotation processing.
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /home/shunn/src/java-bingo/bigoTool/src/main/java/com/example/bingo/controller/BingoCardController.java:[9,42] package org.springframework.messaging.simp does not exist
+[ERROR] /home/shunn/src/java-bingo/bigoTool/src/main/java/com/example/bingo/controller/BingoCardController.java:[20,19] cannot find symbol
+  symbol:   class SimpMessagingTemplate
+  location: class com.example.bingo.controller.BingoCardController
+[ERROR] /home/shunn/src/java-bingo/bigoTool/src/main/java/com/example/bingo/controller/BingoCardController.java:[22,67] cannot find symbol
+  symbol:   class SimpMessagingTemplate
+  location: class com.example.bingo.controller.BingoCardController
+[ERROR] /home/shunn/src/java-bingo/bigoTool/src/main/java/com/example/bingo/config/WebSocketConfig.java:[4,49] package org.springframework.messaging.simp.config does not exist
+[ERROR] /home/shunn/src/java-bingo/bigoTool/src/main/java/com/example/bingo/config/WebSocketConfig.java:[5,56] package org.springframework.web.socket.config.annotation does not exist
+[ERROR] /home/shunn/src/java-bingo/bigoTool/src/main/java/com/example/bingo/config/WebSocketConfig.java:[6,56] package org.springframework.web.socket.config.annotation does not exist
+[ERROR] /home/shunn/src/java-bingo/bigoTool/src/main/java/com/example/bingo/config/WebSocketConfig.java:[7,56] package org.springframework.web.socket.config.annotation does not exist
+[ERROR] /home/shunn/src/java-bingo/bigoTool/src/main/java/com/example/bingo/config/WebSocketConfig.java:[11,41] cannot find symbol
+  symbol: class WebSocketMessageBrokerConfigurer
+[ERROR] /home/shunn/src/java-bingo/bigoTool/src/main/java/com/example/bingo/config/WebSocketConfig.java:[10,2] cannot find symbol
+  symbol: class EnableWebSocketMessageBroker
+[ERROR] /home/shunn/src/java-bingo/bigoTool/src/main/java/com/example/bingo/config/WebSocketConfig.java:[14,40] cannot find symbol
+  symbol:   class MessageBrokerRegistry
+  location: class com.example.bingo.config.WebSocketConfig
+[ERROR] /home/shunn/src/java-bingo/bigoTool/src/main/java/com/example/bingo/config/WebSocketConfig.java:[23,40] cannot find symbol
+  symbol:   class StompEndpointRegistry
+  location: class com.example.bingo.config.WebSocketConfig
+[INFO] 11 errors 
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  2.794 s
+[INFO] Finished at: 2026-02-20T17:50:10+09:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project bingo: Compilation failure: Compilation failure: 
+[ERROR] /home/shunn/src/java-bingo/bigoTool/src/main/java/com/example/bingo/controller/BingoCardController.java:[9,42] package org.springframework.messaging.simp does not exist
+[ERROR] /home/shunn/src/java-bingo/bigoTool/src/main/java/com/example/bingo/controller/BingoCardController.java:[20,19] cannot find symbol
+[ERROR]   symbol:   class SimpMessagingTemplate
+[ERROR]   location: class com.example.bingo.controller.BingoCardController
+[ERROR] /home/shunn/src/java-bingo/bigoTool/src/main/java/com/example/bingo/controller/BingoCardController.java:[22,67] cannot find symbol
+[ERROR]   symbol:   class SimpMessagingTemplate
+[ERROR]   location: class com.example.bingo.controller.BingoCardController
+[ERROR] /home/shunn/src/java-bingo/bigoTool/src/main/java/com/example/bingo/config/WebSocketConfig.java:[4,49] package org.springframework.messaging.simp.config does not exist
+[ERROR] /home/shunn/src/java-bingo/bigoTool/src/main/java/com/example/bingo/config/WebSocketConfig.java:[5,56] package org.springframework.web.socket.config.annotation does not exist
+[ERROR] /home/shunn/src/java-bingo/bigoTool/src/main/java/com/example/bingo/config/WebSocketConfig.java:[6,56] package org.springframework.web.socket.config.annotation does not exist
+[ERROR] /home/shunn/src/java-bingo/bigoTool/src/main/java/com/example/bingo/config/WebSocketConfig.java:[7,56] package org.springframework.web.socket.config.annotation does not exist
+[ERROR] /home/shunn/src/java-bingo/bigoTool/src/main/java/com/example/bingo/config/WebSocketConfig.java:[11,41] cannot find symbol
+[ERROR]   symbol: class WebSocketMessageBrokerConfigurer
+[ERROR] /home/shunn/src/java-bingo/bigoTool/src/main/java/com/example/bingo/config/WebSocketConfig.java:[10,2] cannot find symbol
+[ERROR]   symbol: class EnableWebSocketMessageBroker
+[ERROR] /home/shunn/src/java-bingo/bigoTool/src/main/java/com/example/bingo/config/WebSocketConfig.java:[14,40] cannot find symbol
+[ERROR]   symbol:   class MessageBrokerRegistry
+[ERROR]   location: class com.example.bingo.config.WebSocketConfig
+[ERROR] /home/shunn/src/java-bingo/bigoTool/src/main/java/com/example/bingo/config/WebSocketConfig.java:[23,40] cannot find symbol
+[ERROR]   symbol:   class StompEndpointRegistry
+[ERROR]   location: class com.example.bingo.config.WebSocketConfig
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
