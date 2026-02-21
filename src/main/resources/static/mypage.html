@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bingo App - マイページ</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <header>
+        <h1>マイページ</h1>
+    </header>
+
+    <div class="container">
+        <div style="text-align: right; margin-bottom: 20px;">
+            <span style="color: var(--text-muted); font-size: 0.9rem;">ログイン中: <span id="userIdDisplay">---</span></span>
+            <button onclick="logout()" style="margin-left: 10px; padding: 5px 10px; font-size: 0.8rem;"
+                class="danger">ログアウト</button>
+        </div>
+
+        <div class="card">
+            <h2>お題を投稿する</h2>
+            <p style="color: var(--text-muted); margin-bottom: 15px;">※ビンゴを作るには全体で24個以上のお題があると最適です（重複避け）</p>
+            <input type="text" id="topicInput" placeholder="面白かったエピソード、好きな食べ物 など...">
+            <input type="number" id="topicAmount" placeholder="金額（未入力で0円）"
+                style="margin-top: 10px; width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 4px;">
+            <select id="topicDifficulty"
+                style="margin-top: 10px; margin-bottom: 10px; width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 4px;">
+                <option value="1">難易度: ☆1 (超簡単)</option>
+                <option value="2">難易度: ☆2 (簡単)</option>
+                <option value="3" selected>難易度: ☆3 (普通)</option>
+                <option value="4">難易度: ☆4 (難しい)</option>
+                <option value="5">難易度: ☆5 (超難しい)</option>
+            </select>
+            <button onclick="createTopic()">お題を投稿！</button>
+            <div id="topicMsg" style="color: var(--success); margin-top: 10px; font-weight: bold;"></div>
+        </div>
+
+        <div class="card">
+            <h2>ビンゴカードを作る</h2>
+            <button onclick="generateBingo()"
+                style="width: 100%; font-size: 1.2rem; padding: 15px;">新しいビンゴカードを生成する</button>
+            <div id="bingoLinkArea"
+                style="margin-top: 20px; display: none; text-align: center; padding: 15px; border: 2px dashed var(--primary); border-radius: 8px;">
+                <p>ビンゴカードが完成しました！</p>
+                <a id="bingoLink" href="#"
+                    style="color: var(--primary); font-size: 1.2rem; font-weight: bold; text-decoration: none;">👉
+                    ビンゴカードを開く</a>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 20px;">
+            <h2>自分の作成したビンゴカード</h2>
+            <div id="myBingoCardsArea">
+                <p style="text-align: center; color: var(--text-muted);">読み込み中...</p>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 20px;">
+            <h2>自分の投稿したお題一覧 <span id="myTopicsTotalAmount" style="font-size: 1rem; color: var(--text-muted);"></span>
+            </h2>
+            <div id="myTopicsArea">
+                <p style="text-align: center; color: var(--text-muted);">読み込み中...</p>
+            </div>
+        </div>
+
+        <nav>
+            <a href="admin.html">全お題を見る（管理者用）</a>
+        </nav>
+    </div>
+
+    <script>
+        let userId = localStorage.getItem('bingoUserId');
+
+        window.onload = () => {
+            if (!userId) {
+                window.location.href = 'index.html';
+                return;
+            }
+            document.getElementById('userIdDisplay').innerText = userId;
+            fetchMyTopics();
+            fetchMyBingoCards();
+        };
+
+        async function fetchMyBingoCards() {
+            const area = document.getElementById('myBingoCardsArea');
+            try {
+                const res = await fetch(`/api/bingo/user/${userId}`);
+                if (!res.ok) throw new Error('API Error');
+                const cards = await res.json();
+
+                if (cards.length === 0) {
+                    area.innerHTML = '<p style="text-align: center; color: var(--text-muted);">まだビンゴカードを作成していません。</p>';
+                    return;
+                }
+
+                area.innerHTML = '';
+                cards.forEach((card, index) => {
+                    const div = document.createElement('div');
+                    div.style.padding = '10px';
+                    div.style.borderBottom = '1px solid var(--border)';
+                    div.style.display = 'flex';
+                    div.style.justifyContent = 'space-between';
+                    div.style.alignItems = 'center';
+
+                    const textSpan = document.createElement('span');
+                    textSpan.style.flex = '1';
+                    textSpan.innerText = `ビンゴカード #${index + 1}`;
+
+                    const actionDiv = document.createElement('div');
+
+                    const openBtn = document.createElement('button');
+                    openBtn.innerText = '開く';
+                    openBtn.style.padding = '5px 10px';
+                    openBtn.style.fontSize = '0.8rem';
+                    openBtn.onclick = () => {
+                        window.location.href = `bingo.html?id=${card.id}`;
+                    };
+
+                    actionDiv.appendChild(openBtn);
+                    div.appendChild(textSpan);
+                    div.appendChild(actionDiv);
+                    area.appendChild(div);
+                });
+            } catch (e) {
+                area.innerHTML = '<p style="text-align: center; color: var(--danger);">取得に失敗しました。</p>';
+                console.error(e);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('bingoUserId');
+            window.location.href = 'index.html';
+        }
+
+        async function createTopic() {
+            const content = document.getElementById('topicInput').value.trim();
+            if (!content) return;
+            const amountInput = document.getElementById('topicAmount').value;
+            const amount = amountInput ? parseInt(amountInput, 10) : 0;
+            const difficultyInput = document.getElementById('topicDifficulty').value;
+            const difficulty = parseInt(difficultyInput, 10);
+
+            const res = await fetch('/api/topics', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: content, amount: amount, difficulty: difficulty, creatorId: userId })
+            });
+
+            if (res.ok) {
+                document.getElementById('topicInput').value = '';
+                document.getElementById('topicAmount').value = '';
+                document.getElementById('topicDifficulty').value = '3';
+                const msg = document.getElementById('topicMsg');
+                msg.innerText = "「" + content + "（☆" + difficulty + " / " + amount + "円）」を投稿しました！✨";
+                setTimeout(() => msg.innerText = '', 3000);
+                fetchMyTopics(); // Refresh list
+            } else {
+                alert('投稿に失敗しました。');
+            }
+        }
+
+        async function fetchMyTopics() {
+            const area = document.getElementById('myTopicsArea');
+            try {
+                const res = await fetch(`/api/topics/user/${userId}`);
+                if (!res.ok) throw new Error('API Error');
+                const topics = await res.json();
+
+                const totalSpan = document.getElementById('myTopicsTotalAmount');
+                if (totalSpan) {
+                    const totalAmount = topics.reduce((sum, topic) => sum + (topic.amount || 0), 0);
+                    totalSpan.innerText = `（合計金額: ${totalAmount}円）`;
+                }
+
+                if (topics.length === 0) {
+                    area.innerHTML = '<p style="text-align: center; color: var(--text-muted);">まだお題を投稿していません。</p>';
+                    return;
+                }
+
+                area.innerHTML = '';
+                topics.forEach(topic => {
+                    const div = document.createElement('div');
+                    div.style.padding = '10px';
+                    div.style.borderBottom = '1px solid var(--border)';
+                    div.style.display = 'flex';
+                    div.style.justifyContent = 'space-between';
+                    div.style.alignItems = 'center';
+
+                    const textSpan = document.createElement('span');
+                    textSpan.style.flex = '1';
+                    const diffStars = topic.difficulty ? `☆${topic.difficulty}` : `☆3`;
+                    textSpan.innerText = `${topic.content}（${diffStars} / ${topic.amount}円）`;
+
+                    const actionDiv = document.createElement('div');
+
+                    const editBtn = document.createElement('button');
+                    editBtn.innerText = '編集';
+                    editBtn.style.padding = '5px 10px';
+                    editBtn.style.fontSize = '0.8rem';
+                    editBtn.style.marginRight = '5px';
+                    editBtn.onclick = () => showEditInline(div, topic.id, topic.content, topic.amount, topic.difficulty);
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.innerText = '削除';
+                    deleteBtn.className = 'danger';
+                    deleteBtn.style.padding = '5px 10px';
+                    deleteBtn.style.fontSize = '0.8rem';
+                    deleteBtn.onclick = () => deleteTopic(topic.id, topic.content);
+
+                    actionDiv.appendChild(editBtn);
+                    actionDiv.appendChild(deleteBtn);
+
+                    div.appendChild(textSpan);
+                    div.appendChild(actionDiv);
+                    area.appendChild(div);
+                });
+            } catch (e) {
+                area.innerHTML = '<p style="text-align: center; color: var(--danger);">取得に失敗しました。</p>';
+                console.error(e);
+            }
+        }
+
+        function showEditInline(div, topicId, currentContent, currentAmount, currentDifficulty) {
+            div.innerHTML = '';
+
+            const editForm = document.createElement('div');
+            editForm.style.display = 'flex';
+            editForm.style.flexDirection = 'column';
+            editForm.style.width = '100%';
+            editForm.style.gap = '5px';
+
+            const contentInput = document.createElement('input');
+            contentInput.type = 'text';
+            contentInput.value = currentContent;
+            contentInput.style.padding = '5px';
+            contentInput.style.border = '1px solid var(--border)';
+            contentInput.style.borderRadius = '4px';
+
+            const amountInput = document.createElement('input');
+            amountInput.type = 'number';
+            amountInput.placeholder = '金額（未入力で0円）';
+            if (currentAmount !== undefined) amountInput.value = currentAmount;
+            amountInput.style.padding = '5px';
+            amountInput.style.border = '1px solid var(--border)';
+            amountInput.style.borderRadius = '4px';
+
+            const difficultySelect = document.createElement('select');
+            difficultySelect.style.padding = '5px';
+            difficultySelect.style.border = '1px solid var(--border)';
+            difficultySelect.style.borderRadius = '4px';
+            for (let i = 1; i <= 5; i++) {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.innerText = `☆${i}`;
+                if (currentDifficulty === i || (currentDifficulty === undefined && i === 3)) {
+                    opt.selected = true;
+                }
+                difficultySelect.appendChild(opt);
+            }
+
+            const actionDiv = document.createElement('div');
+            actionDiv.style.display = 'flex';
+            actionDiv.style.gap = '5px';
+            actionDiv.style.justifyContent = 'flex-end';
+
+            const saveBtn = document.createElement('button');
+            saveBtn.innerText = '保存';
+            saveBtn.style.padding = '5px 10px';
+            saveBtn.style.fontSize = '0.8rem';
+            saveBtn.onclick = () => saveEdit(topicId, contentInput.value, amountInput.value, difficultySelect.value);
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.innerText = 'キャンセル';
+            cancelBtn.className = 'danger';
+            cancelBtn.style.padding = '5px 10px';
+            cancelBtn.style.fontSize = '0.8rem';
+            cancelBtn.onclick = () => fetchMyTopics(); // just reload
+
+            actionDiv.appendChild(saveBtn);
+            actionDiv.appendChild(cancelBtn);
+
+            editForm.appendChild(contentInput);
+            editForm.appendChild(amountInput);
+            editForm.appendChild(difficultySelect);
+            editForm.appendChild(actionDiv);
+
+            div.appendChild(editForm);
+        }
+
+        async function saveEdit(topicId, newContent, newAmountStr, newDifficultyStr) {
+            if (!newContent || newContent.trim() === '') return;
+            const newAmount = parseInt(newAmountStr, 10) || 0;
+            const newDifficulty = parseInt(newDifficultyStr, 10) || 3;
+
+            try {
+                const res = await fetch(`/api/topics/${topicId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: newContent.trim(), amount: newAmount, difficulty: newDifficulty, creatorId: userId })
+                });
+
+                if (res.ok) {
+                    fetchMyTopics();
+                } else {
+                    alert('更新に失敗しました。');
+                }
+            } catch (e) {
+                alert('通信エラーが発生しました。');
+            }
+        }
+
+        async function deleteTopic(topicId, currentContent) {
+            if (!confirm(`「${currentContent}」を削除してもよろしいですか？`)) return;
+
+            try {
+                const res = await fetch(`/api/topics/${topicId}?userId=${userId}`, {
+                    method: 'DELETE'
+                });
+
+                if (res.ok) {
+                    fetchMyTopics();
+                } else {
+                    alert('削除に失敗しました。');
+                }
+            } catch (e) {
+                alert('通信エラーが発生しました。');
+            }
+        }
+
+        async function generateBingo() {
+            try {
+                const res = await fetch(`/api/bingo/generate?userId=${userId}`, { method: 'POST' });
+                if (res.ok) {
+                    const card = await res.json();
+                    const linkArea = document.getElementById('bingoLinkArea');
+                    const link = document.getElementById('bingoLink');
+
+                    link.href = `bingo.html?id=${card.id}`;
+                    linkArea.style.display = 'block';
+                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                } else {
+                    alert('カード生成に失敗しました。（お題が全く登録されていない可能性があります）');
+                }
+            } catch (e) {
+                alert('通信エラーが発生しました。');
+            }
+        }
+    </script>
+</body>
+
+</html>

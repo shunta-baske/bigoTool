@@ -1,0 +1,14 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:bingodb}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:Z-18mrDE} # ← ご自身のPostgreSQLのパスワードに合わせてここを書き換えてください
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
