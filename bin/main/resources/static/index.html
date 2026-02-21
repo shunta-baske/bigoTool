@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bingo App Test UI</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .section { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
+        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; max-width: 500px; margin-top: 10px; }
+        .cell { border: 1px solid #333; padding: 10px; text-align: center; cursor: pointer; user-select: none; word-wrap: break-word; font-size: 14px; min-height: 50px; display: flex; align-items: center; justify-content: center; }
+        .punched { background-color: #ffcccc; color: #333; font-weight: bold; }
+        .free { background-color: #ffe4b5; }
+        button, input { margin-top: 5px; padding: 5px; }
+    </style>
+</head>
+<body>
+
+    <h1>ビンゴアプリ テスト画面</h1>
+
+    <div class="section">
+        <h2>1. ユーザー登録</h2>
+        <button onclick="registerUser()">新しくユーザー登録する</button>
+        <p>あなたのUserID: <span id="currentUserId">なし</span></p>
+    </div>
+
+    <div class="section">
+        <h2>2. お題の投稿</h2>
+        <p>※ビンゴを生成するにはお題がいくつか必要です。（24個未満でも重複して生成されます）</p>
+        <input type="text" id="topicInput" placeholder="お題を入力">
+        <button onclick="createTopic()">投稿する</button>
+        <div id="topicMsg" style="color: green;"></div>
+    </div>
+
+    <div class="section">
+        <h2>3. ビンゴカード生成</h2>
+        <button onclick="generateBingo()">ビンゴカードを作る！</button>
+        <p>CardID: <span id="currentCardId">なし</span></p>
+        
+        <div id="bingoGrid" class="grid"></div>
+    </div>
+
+    <script>
+        let userId = null;
+        let cardId = null;
+
+        async function registerUser() {
+            const res = await fetch('/api/users/register', { method: 'POST' });
+            if (res.ok) {
+                const user = await res.json();
+                userId = user.id;
+                document.getElementById('currentUserId').innerText = userId;
+                alert('ユーザー登録成功: ' + userId);
+            }
+        }
+
+        async function createTopic() {
+            if (!userId) return alert('先にユーザー登録してください');
+            const content = document.getElementById('topicInput').value;
+            if (!content) return;
+
+            const res = await fetch('/api/topics', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: content, creatorId: userId })
+            });
+
+            if (res.ok) {
+                document.getElementById('topicInput').value = '';
+                document.getElementById('topicMsg').innerText = "「" + content + "」を投稿しました！";
+                setTimeout(() => document.getElementById('topicMsg').innerText = '', 3000);
+            }
+        }
+
+        async function generateBingo() {
+            if (!userId) return alert('先にユーザー登録してください');
+            const res = await fetch(`/api/bingo/generate?userId=${userId}`, { method: 'POST' });
+            
+            if (res.ok) {
+                const card = await res.json();
+                cardId = card.id;
+                document.getElementById('currentCardId').innerText = cardId;
+                renderBingo(card);
+            } else {
+                alert('カード生成に失敗しました（お題が0件の可能性があります）');
+            }
+        }
+
+        async function togglePunch(index, currentStatus) {
+            if (index === 12) return; // FREEマスは更新しない
+            if (!cardId) return;
+
+            const res = await fetch(`/api/bingo/${cardId}/punch`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ index: index, status: !currentStatus })
+            });
+
+            if (res.ok) {
+                const updatedCard = await res.json();
+                renderBingo(updatedCard);
+            }
+        }
+
+        function renderBingo(card) {
+            const grid = document.getElementById('bingoGrid');
+            grid.innerHTML = '';
+            
+            const topics = card.topics.split(',');
+            const punches = card.punchStatus.split(',').map(s => s === 'true');
+
+            for (let i = 0; i < 25; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                if (i === 12) cell.classList.add('free');
+                if (punches[i]) cell.classList.add('punched');
+                
+                cell.innerText = topics[i];
+                cell.onclick = () => togglePunch(i, punches[i]);
+                
+                grid.appendChild(cell);
+            }
+        }
+    </script>
+</body>
+</html>

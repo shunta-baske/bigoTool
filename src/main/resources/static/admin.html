@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bingo App - 管理者（全お題一覧）</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <header>
+        <h1>全お題一覧</h1>
+    </header>
+
+    <div class="container">
+        <div class="card">
+            <h2>登録ユーザー一覧</h2>
+            <div id="userList">
+                <p style="text-align: center; color: var(--text-muted);">読み込み中...</p>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 20px;">
+            <h2>みんなが投稿したお題 <span id="allTopicsTotalAmount" style="font-size: 1rem; color: var(--text-muted);"></span>
+            </h2>
+            <div id="topicList">
+                <p style="text-align: center; color: var(--text-muted);">読み込み中...</p>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 20px;">
+            <h2>みんなが作成したビンゴカード</h2>
+            <div id="bingoCardList">
+                <p style="text-align: center; color: var(--text-muted);">読み込み中...</p>
+            </div>
+        </div>
+
+        <nav>
+            <a href="mypage.html">マイページに戻る</a>
+        </nav>
+    </div>
+
+    <script>
+        const userId = localStorage.getItem('bingoUserId');
+
+        window.onload = () => {
+            if (userId !== 'useradmin') {
+                alert('このページにアクセスするには管理者用ID（useradmin）でログインする必要があります。');
+                window.location.href = 'index.html';
+                return;
+            }
+
+            fetchUsers();
+            fetchTopics();
+            fetchBingoCards();
+        };
+
+        async function fetchUsers() {
+            try {
+                const res = await fetch('/api/users');
+                if (res.ok) {
+                    const users = await res.json();
+                    renderUsers(users);
+                } else {
+                    document.getElementById('userList').innerHTML = '<p>ユーザーの取得に失敗しました。</p>';
+                }
+            } catch (e) {
+                document.getElementById('userList').innerHTML = '<p>通信エラーが発生しました。</p>';
+            }
+        }
+
+        function renderUsers(users) {
+            const listDiv = document.getElementById('userList');
+
+            if (users.length === 0) {
+                listDiv.innerHTML = '<p style="text-align: center; color: var(--text-muted);">ユーザーがいません。</p>';
+                return;
+            }
+
+            listDiv.innerHTML = '';
+            users.forEach(user => {
+                const item = document.createElement('div');
+                item.className = 'list-item';
+
+                const contentText = document.createElement('span');
+                contentText.innerText = `ユーザーID: ${user.id}`;
+                item.appendChild(contentText);
+
+                const btnPanel = document.createElement('div');
+                const delBtn = document.createElement('button');
+                delBtn.innerText = '削除';
+                delBtn.className = 'danger';
+                delBtn.onclick = () => deleteUser(user.id);
+                btnPanel.appendChild(delBtn);
+
+                item.appendChild(btnPanel);
+                listDiv.appendChild(item);
+            });
+        }
+
+        async function deleteUser(targetUserId) {
+            if (!userId) {
+                alert('削除するにはログインが必要です。Topページからログインしてください。');
+                return;
+            }
+            if (!confirm(`【管理者権限】ユーザー「${targetUserId}」を削除してもよろしいですか？\n※このユーザーが作成したお題・ビンゴカードもすべて削除されます。`)) return;
+
+            const res = await fetch(`/api/users/${targetUserId}/admin`, {
+                method: 'DELETE'
+            });
+
+            if (res.ok) {
+                alert('削除しました。');
+                fetchUsers();
+                fetchTopics();
+                fetchBingoCards();
+            } else {
+                alert('削除に失敗しました。');
+            }
+        }
+
+        async function fetchTopics() {
+            try {
+                const res = await fetch('/api/topics');
+                if (res.ok) {
+                    const topics = await res.json();
+                    renderTopics(topics);
+                } else {
+                    document.getElementById('topicList').innerHTML = '<p>お題の取得に失敗しました。</p>';
+                }
+            } catch (e) {
+                document.getElementById('topicList').innerHTML = '<p>通信エラーが発生しました。</p>';
+            }
+        }
+
+        function renderTopics(topics) {
+            const listDiv = document.getElementById('topicList');
+            const totalSpan = document.getElementById('allTopicsTotalAmount');
+            if (totalSpan) {
+                const totalAmount = topics.reduce((sum, topic) => sum + (topic.amount || 0), 0);
+                totalSpan.innerText = `（合計金額: ${totalAmount}円）`;
+            }
+
+            if (topics.length === 0) {
+                listDiv.innerHTML = '<p style="text-align: center; color: var(--text-muted);">まだお題がありません。マイページから投稿してみましょう！</p>';
+                return;
+            }
+
+            listDiv.innerHTML = '';
+            topics.forEach(topic => {
+                const item = document.createElement('div');
+                item.className = 'list-item';
+
+                const contentText = document.createElement('span');
+                const diffStars = topic.difficulty ? `☆${topic.difficulty}` : `☆3`;
+                contentText.innerText = `[${topic.creator.id}] ${topic.content}（${diffStars} / ${topic.amount}円）`;
+
+                item.appendChild(contentText);
+
+                // Add delete button
+                const btnPanel = document.createElement('div');
+                const delBtn = document.createElement('button');
+                delBtn.innerText = '削除';
+                delBtn.className = 'danger';
+                delBtn.onclick = () => deleteTopic(topic.id);
+                btnPanel.appendChild(delBtn);
+
+                item.appendChild(btnPanel);
+                listDiv.appendChild(item);
+            });
+        }
+
+        async function deleteTopic(topicId) {
+            if (!userId) {
+                alert('削除するにはログインが必要です。Topページからログインしてください。');
+                return;
+            }
+            if (!confirm('【管理者権限】このお題を削除してもよろしいですか？')) return;
+
+            const res = await fetch(`/api/topics/${topicId}/admin`, {
+                method: 'DELETE'
+            });
+
+            if (res.ok) {
+                alert('削除しました。');
+                fetchTopics();
+            } else {
+                alert('削除に失敗しました。');
+            }
+        }
+
+        async function fetchBingoCards() {
+            try {
+                const res = await fetch('/api/bingo');
+                if (res.ok) {
+                    const cards = await res.json();
+                    renderBingoCards(cards);
+                } else {
+                    document.getElementById('bingoCardList').innerHTML = '<p>ビンゴカードの取得に失敗しました。</p>';
+                }
+            } catch (e) {
+                document.getElementById('bingoCardList').innerHTML = '<p>通信エラーが発生しました。</p>';
+            }
+        }
+
+        function renderBingoCards(cards) {
+            const listDiv = document.getElementById('bingoCardList');
+
+            if (cards.length === 0) {
+                listDiv.innerHTML = '<p style="text-align: center; color: var(--text-muted);">まだビンゴカードがありません。</p>';
+                return;
+            }
+
+            listDiv.innerHTML = '';
+            cards.forEach((card, index) => {
+                const item = document.createElement('div');
+                item.className = 'list-item';
+
+                const contentText = document.createElement('span');
+                contentText.innerText = `ビンゴカード #${index + 1} (作成者: ${card.user.id})`;
+
+                item.appendChild(contentText);
+
+                const btnPanel = document.createElement('div');
+
+                const openBtn = document.createElement('button');
+                openBtn.innerText = '開く';
+                openBtn.style.marginRight = '5px';
+                openBtn.onclick = () => window.location.href = `bingo.html?id=${card.id}`;
+                btnPanel.appendChild(openBtn);
+
+                const delBtn = document.createElement('button');
+                delBtn.innerText = '削除';
+                delBtn.className = 'danger';
+                delBtn.onclick = () => deleteBingoCard(card.id);
+                btnPanel.appendChild(delBtn);
+
+                item.appendChild(btnPanel);
+                listDiv.appendChild(item);
+            });
+        }
+
+        async function deleteBingoCard(cardId) {
+            if (!userId) {
+                alert('削除するにはログインが必要です。Topページからログインしてください。');
+                return;
+            }
+            if (!confirm('【管理者権限】このビンゴカードを削除してもよろしいですか？')) return;
+
+            const res = await fetch(`/api/bingo/${cardId}/admin`, {
+                method: 'DELETE'
+            });
+
+            if (res.ok) {
+                alert('削除しました。');
+                fetchBingoCards();
+            } else {
+                alert('削除に失敗しました。');
+            }
+        }
+    </script>
+</body>
+
+</html>
