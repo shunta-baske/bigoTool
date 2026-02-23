@@ -61,11 +61,38 @@ public class BingoCardService {
         int bucketIndex = 0;
 
         // Draw round-robin across available difficulty buckets
+        Set<UUID> usedTopicIds = new HashSet<>();
+        boolean canEnsureUnique = allTopics.size() >= 24;
+
         while (selectedTopics.size() < 24) {
+            if (availableDifficulties.isEmpty()) {
+                // Fallback to allow duplicates if we run out of unique topics unexpectedly
+                for (int i = 1; i <= 5; i++) {
+                    if (!difficultyBuckets.get(i).isEmpty()) {
+                        availableDifficulties.add(i);
+                    }
+                }
+                canEnsureUnique = false;
+            }
+
             int diff = availableDifficulties.get(bucketIndex % availableDifficulties.size());
             List<Topic> bucket = difficultyBuckets.get(diff);
-            Topic randomTopic = bucket.get(random.nextInt(bucket.size()));
+
+            List<Topic> availableInBucket = bucket;
+            if (canEnsureUnique) {
+                availableInBucket = bucket.stream()
+                        .filter(t -> !usedTopicIds.contains(t.getId()))
+                        .toList();
+
+                if (availableInBucket.isEmpty()) {
+                    availableDifficulties.remove(Integer.valueOf(diff));
+                    continue; // Skip incrementing bucketIndex, try next difficulty
+                }
+            }
+
+            Topic randomTopic = availableInBucket.get(random.nextInt(availableInBucket.size()));
             selectedTopics.add(randomTopic);
+            usedTopicIds.add(randomTopic.getId());
             bucketIndex++;
         }
 
