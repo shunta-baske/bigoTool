@@ -24,6 +24,8 @@
             <h2>お題を投稿する</h2>
             <p style="color: var(--text-muted); margin-bottom: 15px;">※ビンゴを作るには全体で24個以上のお題があると最適です（重複避け）</p>
             <input type="text" id="topicInput" placeholder="面白かったエピソード、好きな食べ物 など...">
+            <textarea id="topicDescription" placeholder="お題の補足説明（任意）"
+                style="margin-top: 10px; width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 4px; resize: vertical; min-height: 60px;"></textarea>
             <input type="number" id="topicAmount" placeholder="金額（未入力で0円）"
                 style="margin-top: 10px; width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 4px;">
             <select id="topicDifficulty"
@@ -138,6 +140,7 @@
         async function createTopic() {
             const content = document.getElementById('topicInput').value.trim();
             if (!content) return;
+            const description = document.getElementById('topicDescription').value.trim();
             const amountInput = document.getElementById('topicAmount').value;
             const amount = amountInput ? parseInt(amountInput, 10) : 0;
             const difficultyInput = document.getElementById('topicDifficulty').value;
@@ -146,11 +149,12 @@
             const res = await fetch('/api/topics', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: content, amount: amount, difficulty: difficulty, creatorId: userId })
+                body: JSON.stringify({ content: content, description: description, amount: amount, difficulty: difficulty, creatorId: userId })
             });
 
             if (res.ok) {
                 document.getElementById('topicInput').value = '';
+                document.getElementById('topicDescription').value = '';
                 document.getElementById('topicAmount').value = '';
                 document.getElementById('topicDifficulty').value = '3';
                 const msg = document.getElementById('topicMsg');
@@ -192,7 +196,15 @@
                     const textSpan = document.createElement('span');
                     textSpan.style.flex = '1';
                     const diffStars = topic.difficulty ? `☆${topic.difficulty}` : `☆3`;
-                    textSpan.innerText = `${topic.content}（${diffStars} / ${topic.amount}円）`;
+                    textSpan.innerHTML = `<strong>${topic.content}</strong>（${diffStars} / ${topic.amount}円）`;
+                    if (topic.description) {
+                        const descDiv = document.createElement('div');
+                        descDiv.style.fontSize = '0.85rem';
+                        descDiv.style.color = 'var(--text-muted)';
+                        descDiv.style.marginTop = '4px';
+                        descDiv.innerText = topic.description;
+                        textSpan.appendChild(descDiv);
+                    }
 
                     const actionDiv = document.createElement('div');
 
@@ -201,7 +213,7 @@
                     editBtn.style.padding = '5px 10px';
                     editBtn.style.fontSize = '0.8rem';
                     editBtn.style.marginRight = '5px';
-                    editBtn.onclick = () => showEditInline(div, topic.id, topic.content, topic.amount, topic.difficulty);
+                    editBtn.onclick = () => showEditInline(div, topic.id, topic.content, topic.description, topic.amount, topic.difficulty);
 
                     const deleteBtn = document.createElement('button');
                     deleteBtn.innerText = '削除';
@@ -223,7 +235,7 @@
             }
         }
 
-        function showEditInline(div, topicId, currentContent, currentAmount, currentDifficulty) {
+        function showEditInline(div, topicId, currentContent, currentDescription, currentAmount, currentDifficulty) {
             div.innerHTML = '';
 
             const editForm = document.createElement('div');
@@ -238,6 +250,15 @@
             contentInput.style.padding = '5px';
             contentInput.style.border = '1px solid var(--border)';
             contentInput.style.borderRadius = '4px';
+
+            const descriptionInput = document.createElement('textarea');
+            descriptionInput.value = currentDescription || '';
+            descriptionInput.placeholder = 'お題の補足説明（任意）';
+            descriptionInput.style.padding = '5px';
+            descriptionInput.style.border = '1px solid var(--border)';
+            descriptionInput.style.borderRadius = '4px';
+            descriptionInput.style.resize = 'vertical';
+            descriptionInput.style.minHeight = '60px';
 
             const amountInput = document.createElement('input');
             amountInput.type = 'number';
@@ -270,7 +291,7 @@
             saveBtn.innerText = '保存';
             saveBtn.style.padding = '5px 10px';
             saveBtn.style.fontSize = '0.8rem';
-            saveBtn.onclick = () => saveEdit(topicId, contentInput.value, amountInput.value, difficultySelect.value);
+            saveBtn.onclick = () => saveEdit(topicId, contentInput.value, descriptionInput.value, amountInput.value, difficultySelect.value);
 
             const cancelBtn = document.createElement('button');
             cancelBtn.innerText = 'キャンセル';
@@ -283,6 +304,7 @@
             actionDiv.appendChild(cancelBtn);
 
             editForm.appendChild(contentInput);
+            editForm.appendChild(descriptionInput);
             editForm.appendChild(amountInput);
             editForm.appendChild(difficultySelect);
             editForm.appendChild(actionDiv);
@@ -290,7 +312,7 @@
             div.appendChild(editForm);
         }
 
-        async function saveEdit(topicId, newContent, newAmountStr, newDifficultyStr) {
+        async function saveEdit(topicId, newContent, newDescription, newAmountStr, newDifficultyStr) {
             if (!newContent || newContent.trim() === '') return;
             const newAmount = parseInt(newAmountStr, 10) || 0;
             const newDifficulty = parseInt(newDifficultyStr, 10) || 3;
@@ -299,7 +321,7 @@
                 const res = await fetch(`/api/topics/${topicId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ content: newContent.trim(), amount: newAmount, difficulty: newDifficulty, creatorId: userId })
+                    body: JSON.stringify({ content: newContent.trim(), description: newDescription.trim(), amount: newAmount, difficulty: newDifficulty, creatorId: userId })
                 });
 
                 if (res.ok) {
