@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -22,12 +23,13 @@ public class TopicService {
         this.userRepository = userRepository;
     }
 
-    public Topic createTopic(String content, String creatorId, Integer amount, Integer difficulty) {
+    public Topic createTopic(String content, String description, String creatorId, Integer amount, Integer difficulty) {
         User creator = userRepository.findById(creatorId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         Topic topic = new Topic();
         topic.setContent(content);
+        topic.setDescription(description);
         topic.setAmount(amount != null ? amount : 0);
 
         // Default difficulty to 3 (normal), or clamp between 1-5
@@ -50,7 +52,8 @@ public class TopicService {
         return topicRepository.findByCreatorId(creatorId);
     }
 
-    public Topic updateTopic(UUID topicId, String newContent, Integer newAmount, Integer newDifficulty,
+    public Topic updateTopic(UUID topicId, String newContent, String newDescription, Integer newAmount,
+            Integer newDifficulty,
             String requestUserId) {
         Topic topic = topicRepository.findById(topicId)
                 .orElseThrow(() -> new IllegalArgumentException("Topic not found"));
@@ -60,6 +63,7 @@ public class TopicService {
         }
 
         topic.setContent(newContent);
+        topic.setDescription(newDescription);
         topic.setAmount(newAmount != null ? newAmount : 0);
 
         if (newDifficulty == null || newDifficulty < 1 || newDifficulty > 5) {
@@ -69,6 +73,10 @@ public class TopicService {
         }
 
         return topicRepository.save(topic);
+    }
+
+    public Optional<Topic> findTopicByContent(String content) {
+        return topicRepository.findFirstByContent(content);
     }
 
     public void deleteTopic(UUID topicId, String requestUserId) {

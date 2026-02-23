@@ -28,4 +28,7 @@ public class Topic {
     @JoinColumn(name = "creator_id", nullable = false)
     @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private User creator;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
 }

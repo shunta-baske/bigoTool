@@ -12,5 +12,7 @@ import java.util.UUID;
 public interface TopicRepository extends JpaRepository<Topic, UUID> {
     List<Topic> findByCreatorId(String creatorId);
 
+    java.util.Optional<Topic> findFirstByContent(String content);
+
     void deleteByCreatorId(String creatorId);
 }

@@ -23,7 +23,8 @@ public class TopicController {
     @PostMapping
     public ResponseEntity<Topic> createTopic(@RequestBody TopicRequest request) {
         try {
-            Topic createdTopic = topicService.createTopic(request.getContent(), request.getCreatorId(),
+            Topic createdTopic = topicService.createTopic(request.getContent(), request.getDescription(),
+                    request.getCreatorId(),
                     request.getAmount(), request.getDifficulty());
             return ResponseEntity.ok(createdTopic);
         } catch (IllegalArgumentException e) {
@@ -41,10 +42,18 @@ public class TopicController {
         return ResponseEntity.ok(topicService.getTopicsByUser(userId));
     }
 
+    @GetMapping("/search")
+    public ResponseEntity<Topic> searchTopic(@RequestParam String content) {
+        return topicService.findTopicByContent(content)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<Topic> updateTopic(@PathVariable UUID id, @RequestBody TopicRequest request) {
         try {
-            Topic updatedTopic = topicService.updateTopic(id, request.getContent(), request.getAmount(),
+            Topic updatedTopic = topicService.updateTopic(id, request.getContent(), request.getDescription(),
+                    request.getAmount(),
                     request.getDifficulty(), request.getCreatorId());
             return ResponseEntity.ok(updatedTopic);
         } catch (IllegalArgumentException | IllegalStateException e) {
