@@ -34,7 +34,7 @@ public class BingoCardController {
      * @return 生成された2枚のビンゴカード情報
      */
     @PostMapping("/generate")
-    public ResponseEntity<List<BingoCard>> generateCards(@RequestParam String userId) {
+    public ResponseEntity<List<BingoCard>> generateCards(@RequestParam("userId") String userId) {
         if (!"useradmin".equals(userId)) {
             return ResponseEntity.status(403).build();
         }
@@ -53,7 +53,7 @@ public class BingoCardController {
      * @return ユーザーのビンゴカードのリスト
      */
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<BingoCard>> getCardsByUser(@PathVariable String userId) {
+    public ResponseEntity<List<BingoCard>> getCardsByUser(@PathVariable("userId") String userId) {
         return ResponseEntity.ok(bingoCardService.getCardsByUser(userId));
     }
 
@@ -74,7 +74,7 @@ public class BingoCardController {
      * @return ビンゴカード情報。存在しない場合は404。
      */
     @GetMapping("/{id}")
-    public ResponseEntity<BingoCard> getCard(@PathVariable UUID id) {
+    public ResponseEntity<BingoCard> getCard(@PathVariable("id") UUID id) {
         Optional<BingoCard> cardOptional = bingoCardService.getCard(id);
         return cardOptional.map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
@@ -90,7 +90,7 @@ public class BingoCardController {
      */
     @PutMapping("/{id}/punch")
     public ResponseEntity<BingoCard> updatePunchStatus(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @RequestBody PunchStatusRequest request) {
         try {
             BingoCard updatedCard = bingoCardService.updatePunchStatus(id, request.getIndex(), request.isStatus());
@@ -112,7 +112,7 @@ public class BingoCardController {
      * @return 処理結果
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCard(@PathVariable UUID id, @RequestParam String userId) {
+    public ResponseEntity<Void> deleteCard(@PathVariable("id") UUID id, @RequestParam("userId") String userId) {
         try {
             bingoCardService.deleteCard(id, userId);
             return ResponseEntity.ok().build();
@@ -129,7 +129,7 @@ public class BingoCardController {
      * @return 処理結果
      */
     @DeleteMapping("/{id}/admin")
-    public ResponseEntity<Void> deleteCardAdmin(@PathVariable UUID id) {
+    public ResponseEntity<Void> deleteCardAdmin(@PathVariable("id") UUID id) {
         try {
             bingoCardService.deleteCardAdmin(id);
             return ResponseEntity.ok().build();

@@ -55,7 +55,7 @@ public class UserController {
      * @return ユーザー情報。存在しない場合は404。
      */
     @GetMapping("/{id}")
-    public ResponseEntity<User> getUser(@PathVariable String id) {
+    public ResponseEntity<User> getUser(@PathVariable("id") String id) {
         Optional<User> userOptional = userService.getUser(id);
         return userOptional.map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
@@ -78,7 +78,7 @@ public class UserController {
      * @return 処理結果
      */
     @DeleteMapping("/{id}/admin")
-    public ResponseEntity<Void> deleteUserAsAdmin(@PathVariable String id) {
+    public ResponseEntity<Void> deleteUserAsAdmin(@PathVariable("id") String id) {
         try {
             userService.deleteUserAsAdmin(id);
             return ResponseEntity.ok().build();

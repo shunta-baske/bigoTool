@@ -40,17 +40,6 @@
             <div id="topicMsg" style="color: var(--success); margin-top: 10px; font-weight: bold;"></div>
         </div>
 
-        <div class="card" id="generateCardSection" style="display: none;">
-            <h2>ビンゴカードを作る（管理者専用）</h2>
-            <button onclick="generateBingo()"
-                style="width: 100%; font-size: 1.2rem; padding: 15px;">新しいビンゴカードを2枚生成する</button>
-            <div id="bingoLinkArea"
-                style="margin-top: 20px; display: none; text-align: center; padding: 15px; border: 2px dashed var(--primary); border-radius: 8px;">
-                <p>ビンゴカードが完成しました！（2枚）</p>
-                <div id="bingoLinks"></div>
-            </div>
-        </div>
-
         <div class="card" style="margin-top: 20px;">
             <h2>自分の作成したビンゴカード</h2>
             <div id="myBingoCardsArea">
@@ -80,10 +69,6 @@
                 return;
             }
             document.getElementById('userIdDisplay').innerText = userId;
-            // ビンゴカード生成セクションは管理者のみ表示
-            if (userId === 'useradmin') {
-                document.getElementById('generateCardSection').style.display = 'block';
-            }
             fetchMyTopics();
             fetchMyBingoCards();
         };
@@ -354,38 +339,6 @@
             }
         }
 
-        async function generateBingo() {
-            try {
-                const res = await fetch(`/api/bingo/generate?userId=${userId}`, { method: 'POST' });
-                if (res.ok) {
-                    const cards = await res.json();
-                    const linkArea = document.getElementById('bingoLinkArea');
-                    const linksDiv = document.getElementById('bingoLinks');
-                    linksDiv.innerHTML = '';
-                    cards.forEach((card, idx) => {
-                        const a = document.createElement('a');
-                        a.href = `bingo.html?id=${card.id}`;
-                        a.style.display = 'block';
-                        a.style.color = 'var(--primary)';
-                        a.style.fontSize = '1.2rem';
-                        a.style.fontWeight = 'bold';
-                        a.style.textDecoration = 'none';
-                        a.style.marginBottom = '8px';
-                        a.innerText = `👉 ビンゴカード ${idx + 1} を開く`;
-                        linksDiv.appendChild(a);
-                    });
-                    linkArea.style.display = 'block';
-                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-                    fetchMyBingoCards();
-                } else if (res.status === 403) {
-                    alert('ビンゴカード生成は管理者専用の機能です。');
-                } else {
-                    alert('カード生成に失敗しました。（お題が全く登録されていない可能性があります）');
-                }
-            } catch (e) {
-                alert('通信エラーが発生しました。');
-            }
-        }
     </script>
 </body>
 

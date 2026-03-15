@@ -58,7 +58,7 @@ public class TopicController {
      * @return ユーザーのトピックリスト
      */
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<Topic>> getTopicsByUser(@PathVariable String userId) {
+    public ResponseEntity<List<Topic>> getTopicsByUser(@PathVariable("userId") String userId) {
         return ResponseEntity.ok(topicService.getTopicsByUser(userId));
     }
 
@@ -69,7 +69,7 @@ public class TopicController {
      * @return 見つかったトピック。存在しない場合は404。
      */
     @GetMapping("/search")
-    public ResponseEntity<Topic> searchTopic(@RequestParam String content) {
+    public ResponseEntity<Topic> searchTopic(@RequestParam("content") String content) {
         return topicService.findTopicByContent(content)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -83,7 +83,7 @@ public class TopicController {
      * @return 更新されたトピック
      */
     @PutMapping("/{id}")
-    public ResponseEntity<Topic> updateTopic(@PathVariable UUID id, @RequestBody TopicRequest request) {
+    public ResponseEntity<Topic> updateTopic(@PathVariable("id") UUID id, @RequestBody TopicRequest request) {
         try {
             Topic updatedTopic = topicService.updateTopic(id, request.getContent(), request.getDescription(),
                     request.getAmount(),
@@ -102,7 +102,7 @@ public class TopicController {
      * @return 処理結果
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTopic(@PathVariable UUID id, @RequestParam String userId) {
+    public ResponseEntity<Void> deleteTopic(@PathVariable("id") UUID id, @RequestParam("userId") String userId) {
         try {
             topicService.deleteTopic(id, userId);
             return ResponseEntity.ok().build();
@@ -119,7 +119,7 @@ public class TopicController {
      * @return 処理結果
      */
     @DeleteMapping("/{id}/admin")
-    public ResponseEntity<Void> deleteTopicAsAdmin(@PathVariable UUID id) {
+    public ResponseEntity<Void> deleteTopicAsAdmin(@PathVariable("id") UUID id) {
         try {
             topicService.deleteTopicAsAdmin(id);
             return ResponseEntity.ok().build();
