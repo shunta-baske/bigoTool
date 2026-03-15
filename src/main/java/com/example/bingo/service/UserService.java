@@ -10,6 +10,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * ユーザー情報の取得、登録、削除等のビジネスロジックを提供するサービスクラス。
+ */
 @Service
 @Transactional
 public class UserService {
@@ -25,20 +28,44 @@ public class UserService {
         this.bingoCardRepository = bingoCardRepository;
     }
 
+    /**
+     * 指定されたIDで新しいユーザーを登録します。
+     *
+     * @param id ユーザーID
+     * @return 登録されたユーザー
+     */
     public User registerUser(String id) {
         User user = new User();
         user.setId(id);
         return userRepository.save(user);
     }
 
+    /**
+     * 指定されたIDのユーザーを取得します。
+     *
+     * @param id ユーザーID
+     * @return ユーザー情報（Optional）
+     */
     public Optional<User> getUser(String id) {
         return userRepository.findById(id);
     }
 
+    /**
+     * 全てのユーザーのリストを取得します。
+     *
+     * @return 全ユーザーのリスト
+     */
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
 
+    /**
+     * 管理者権限で指定されたユーザーを強制的に削除します。
+     * 外部キー制約のため、ユーザーに関連するトピックとビンゴカードも先に削除されます。
+     *
+     * @param id 削除するユーザーのID
+     * @throws IllegalArgumentException ユーザーが存在しない場合
+     */
     public void deleteUserAsAdmin(String id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));

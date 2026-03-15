@@ -30,6 +30,15 @@
         </div>
 
         <div class="card" style="margin-top: 20px;">
+            <h2>ビンゴカード生成（管理者専用）</h2>
+            <button onclick="generateBingoCards()" style="width: 100%; font-size: 1.1rem; padding: 12px;">新しいビンゴカードを2枚生成する</button>
+            <div id="generateLinkArea" style="margin-top: 15px; display: none; text-align: center; padding: 12px; border: 2px dashed var(--primary); border-radius: 8px;">
+                <p>ビンゴカードが生成されました！（2枚）</p>
+                <div id="generateLinks"></div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 20px;">
             <h2>みんなが作成したビンゴカード</h2>
             <div id="bingoCardList">
                 <p style="text-align: center; color: var(--text-muted);">読み込み中...</p>
@@ -43,6 +52,7 @@
 
     <script>
         const userId = localStorage.getItem('bingoUserId');
+        let allTopicsCache = [];
 
         window.onload = () => {
             if (userId !== 'useradmin') {
@@ -55,6 +65,36 @@
             fetchTopics();
             fetchBingoCards();
         };
+
+        async function generateBingoCards() {
+            try {
+                const res = await fetch(`/api/bingo/generate?userId=${userId}`, { method: 'POST' });
+                if (res.ok) {
+                    const cards = await res.json();
+                    const linkArea = document.getElementById('generateLinkArea');
+                    const linksDiv = document.getElementById('generateLinks');
+                    linksDiv.innerHTML = '';
+                    cards.forEach((card, idx) => {
+                        const a = document.createElement('a');
+                        a.href = `bingo.html?id=${card.id}`;
+                        a.style.display = 'block';
+                        a.style.color = 'var(--primary)';
+                        a.style.fontSize = '1.1rem';
+                        a.style.fontWeight = 'bold';
+                        a.style.textDecoration = 'none';
+                        a.style.marginBottom = '6px';
+                        a.innerText = `👉 ビンゴカード ${idx + 1} を開く`;
+                        linksDiv.appendChild(a);
+                    });
+                    linkArea.style.display = 'block';
+                    fetchBingoCards();
+                } else {
+                    alert('カード生成に失敗しました。（お題が全く登録されていない可能性があります）');
+                }
+            } catch (e) {
+                alert('通信エラーが発生しました。');
+            }
+        }
 
         async function fetchUsers() {
             try {
@@ -125,6 +165,7 @@
                 const res = await fetch('/api/topics');
                 if (res.ok) {
                     const topics = await res.json();
+                    allTopicsCache = topics;
                     renderTopics(topics);
                 } else {
                     document.getElementById('topicList').innerHTML = '<p>お題の取得に失敗しました。</p>';
@@ -204,6 +245,19 @@
             }
         }
 
+        function calcCardTotalAmount(card) {
+            if (!card.topics) return 0;
+            const topicTexts = card.topics.split(',');
+            let total = 0;
+            topicTexts.forEach(text => {
+                // 中央マス（固定お題）は金額0として扱う
+                if (!text || text === '思い出の写真撮影') return;
+                const matched = allTopicsCache.find(t => t.content.replace(',', '，') === text || t.content === text);
+                if (matched) total += (matched.amount || 0);
+            });
+            return total;
+        }
+
         function renderBingoCards(cards) {
             const listDiv = document.getElementById('bingoCardList');
 
@@ -218,7 +272,8 @@
                 item.className = 'list-item';
 
                 const contentText = document.createElement('span');
-                contentText.innerText = `ビンゴカード #${index + 1} (作成者: ${card.user.id})`;
+                const totalAmount = calcCardTotalAmount(card);
+                contentText.innerText = `ビンゴカード #${index + 1} (作成者: ${card.user.id}) ／ お題合計金額: ${totalAmount}円`;
 
                 item.appendChild(contentText);
 

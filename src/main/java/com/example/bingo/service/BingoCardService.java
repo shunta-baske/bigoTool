@@ -11,9 +11,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 
+/**
+ * ビンゴカードの生成、取得、更新、削除等のビジネスロジックを提供するサービスクラス。
+ */
 @Service
 @Transactional
 public class BingoCardService {
+
+    /** 中央マスに固定で配置するお題 */
+    private static final String CENTER_TOPIC = "思い出の写真撮影";
 
     private final BingoCardRepository bingoCardRepository;
     private final TopicRepository topicRepository;
@@ -26,28 +32,33 @@ public class BingoCardService {
         this.userRepository = userRepository;
     }
 
-    public BingoCard generateCard(String userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-
-        List<Topic> allTopics = topicRepository.findAll();
-        if (allTopics.isEmpty()) {
-            throw new IllegalStateException("Cannot generate Bingo card: No topics available");
-        }
-
-        // Group topics by difficulty (1 to 5)
-        Map<Integer, List<Topic>> difficultyBuckets = new HashMap<>();
+    /**
+     * 難易度ごとのバケツを構築します。
+     */
+    private Map<Integer, List<Topic>> buildDifficultyBuckets(List<Topic> allTopics) {
+        Map<Integer, List<Topic>> buckets = new HashMap<>();
         for (int i = 1; i <= 5; i++) {
-            difficultyBuckets.put(i, new ArrayList<>());
+            buckets.put(i, new ArrayList<>());
         }
         for (Topic t : allTopics) {
-            // Safety bounds in case of old data
             int diff = (t.getDifficulty() != null) ? t.getDifficulty() : 3;
             diff = Math.max(1, Math.min(5, diff));
-            difficultyBuckets.get(diff).add(t);
+            buckets.get(diff).add(t);
         }
+        return buckets;
+    }
 
-        // Get available difficulty buckets
+    /**
+     * ラウンドロビン方式で24枚のお題を選択します。
+     *
+     * @param allTopics      全お題リスト
+     * @param excludeIds     除外するお題IDセット（重複回避用）
+     * @param random         乱数
+     * @return 選択された24枚のお題リスト
+     */
+    private List<Topic> selectTopics(List<Topic> allTopics, Set<UUID> excludeIds, Random random) {
+        Map<Integer, List<Topic>> difficultyBuckets = buildDifficultyBuckets(allTopics);
+
         List<Integer> availableDifficulties = new ArrayList<>();
         for (int i = 1; i <= 5; i++) {
             if (!difficultyBuckets.get(i).isEmpty()) {
@@ -55,18 +66,13 @@ public class BingoCardService {
             }
         }
 
-        // We need 24 topics to surround the FREE square
         List<Topic> selectedTopics = new ArrayList<>();
-        Random random = new Random();
         int bucketIndex = 0;
-
-        // Draw round-robin across available difficulty buckets
-        Set<UUID> usedTopicIds = new HashSet<>();
-        boolean canEnsureUnique = allTopics.size() >= 24;
+        Set<UUID> usedTopicIds = new HashSet<>(excludeIds);
+        boolean canEnsureUnique = (allTopics.size() - excludeIds.size()) >= 24;
 
         while (selectedTopics.size() < 24) {
             if (availableDifficulties.isEmpty()) {
-                // Fallback to allow duplicates if we run out of unique topics unexpectedly
                 for (int i = 1; i <= 5; i++) {
                     if (!difficultyBuckets.get(i).isEmpty()) {
                         availableDifficulties.add(i);
@@ -86,7 +92,7 @@ public class BingoCardService {
 
                 if (availableInBucket.isEmpty()) {
                     availableDifficulties.remove(Integer.valueOf(diff));
-                    continue; // Skip incrementing bucketIndex, try next difficulty
+                    continue;
                 }
             }
 
@@ -96,18 +102,22 @@ public class BingoCardService {
             bucketIndex++;
         }
 
-        // Let's shuffle the selected 24 topics just in case
-        Collections.shuffle(selectedTopics);
+        Collections.shuffle(selectedTopics, random);
+        return selectedTopics;
+    }
 
-        // Build the 25 topics list, with FREE at index 12
+    /**
+     * 24枚のお題リストからビンゴカードを生成して保存します。
+     * 中央マス（index 12）は固定で「思い出の写真撮影」を配置します。
+     */
+    private BingoCard buildAndSaveCard(User user, List<Topic> topics) {
         List<String> finalBoard = new ArrayList<>(25);
         for (int i = 0; i < 25; i++) {
             if (i == 12) {
-                finalBoard.add("FREE");
+                finalBoard.add(CENTER_TOPIC);
             } else {
                 int selectedIndex = i > 12 ? i - 1 : i;
-                Topic selectedTopic = selectedTopics.get(selectedIndex);
-                // Escape commas to prevent breaking the CSV format if a topic contains a comma
+                Topic selectedTopic = topics.get(selectedIndex);
                 String content = selectedTopic.getContent().replace(",", "，");
                 finalBoard.add(content);
             }
@@ -115,14 +125,9 @@ public class BingoCardService {
 
         String topicsCsv = String.join(",", finalBoard);
 
-        // Initial punch status: all false, except index 12 which is true
         List<String> punches = new ArrayList<>(25);
         for (int i = 0; i < 25; i++) {
-            if (i == 12) {
-                punches.add("true");
-            } else {
-                punches.add("false");
-            }
+            punches.add(i == 12 ? "true" : "false");
         }
         String punchStatusCsv = String.join(",", punches);
 
@@ -134,18 +139,131 @@ public class BingoCardService {
         return bingoCardRepository.save(bingoCard);
     }
 
+    /**
+     * 指定されたユーザーのために2枚のビンゴカードを同時に生成します。
+     * 2枚の難易度合計が均等になるようにお題を振り分けます。
+     * 中央マス（index 12）は固定で「思い出の写真撮影」を配置します。
+     *
+     * @param userId ユーザーID
+     * @return 生成・保存されたビンゴカードのリスト（2枚）
+     * @throws IllegalArgumentException ユーザーが存在しない場合
+     * @throws IllegalStateException    トピックが1つも存在しない場合
+     */
+    public List<BingoCard> generateCards(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        List<Topic> allTopics = topicRepository.findAll();
+        if (allTopics.isEmpty()) {
+            throw new IllegalStateException("Cannot generate Bingo card: No topics available");
+        }
+
+        Random random = new Random();
+
+        // 1枚目のお題を選択
+        List<Topic> topics1 = selectTopics(allTopics, Collections.emptySet(), random);
+
+        // 2枚目のお題を選択（1枚目で使ったIDを除外しようとする）
+        Set<UUID> usedIds1 = new HashSet<>();
+        for (Topic t : topics1) {
+            usedIds1.add(t.getId());
+        }
+        List<Topic> topics2 = selectTopics(allTopics, usedIds1, random);
+
+        // 難易度合計を計算
+        int sum1 = topics1.stream().mapToInt(t -> t.getDifficulty() != null ? t.getDifficulty() : 3).sum();
+        int sum2 = topics2.stream().mapToInt(t -> t.getDifficulty() != null ? t.getDifficulty() : 3).sum();
+
+        // 難易度差を均等化：差が大きい場合、2枚間でお題をスワップして差を縮める
+        for (int iter = 0; iter < 50 && Math.abs(sum1 - sum2) > 2; iter++) {
+            if (sum1 > sum2) {
+                // 1枚目の高難易度お題と2枚目の低難易度お題をスワップ
+                int maxDiff1 = topics1.stream().mapToInt(t -> t.getDifficulty() != null ? t.getDifficulty() : 3).max().orElse(3);
+                int minDiff2 = topics2.stream().mapToInt(t -> t.getDifficulty() != null ? t.getDifficulty() : 3).min().orElse(3);
+                if (maxDiff1 <= minDiff2) break; // スワップしても改善しない
+
+                int idx1 = findLastIndex(topics1, maxDiff1);
+                int idx2 = findFirstIndex(topics2, minDiff2);
+                Topic tmp = topics1.get(idx1);
+                topics1.set(idx1, topics2.get(idx2));
+                topics2.set(idx2, tmp);
+            } else {
+                int minDiff1 = topics1.stream().mapToInt(t -> t.getDifficulty() != null ? t.getDifficulty() : 3).min().orElse(3);
+                int maxDiff2 = topics2.stream().mapToInt(t -> t.getDifficulty() != null ? t.getDifficulty() : 3).max().orElse(3);
+                if (minDiff1 >= maxDiff2) break;
+
+                int idx1 = findFirstIndex(topics1, minDiff1);
+                int idx2 = findLastIndex(topics2, maxDiff2);
+                Topic tmp = topics1.get(idx1);
+                topics1.set(idx1, topics2.get(idx2));
+                topics2.set(idx2, tmp);
+            }
+
+            sum1 = topics1.stream().mapToInt(t -> t.getDifficulty() != null ? t.getDifficulty() : 3).sum();
+            sum2 = topics2.stream().mapToInt(t -> t.getDifficulty() != null ? t.getDifficulty() : 3).sum();
+        }
+
+        BingoCard card1 = buildAndSaveCard(user, topics1);
+        BingoCard card2 = buildAndSaveCard(user, topics2);
+
+        return List.of(card1, card2);
+    }
+
+    private int findFirstIndex(List<Topic> topics, int difficulty) {
+        for (int i = 0; i < topics.size(); i++) {
+            int d = topics.get(i).getDifficulty() != null ? topics.get(i).getDifficulty() : 3;
+            if (d == difficulty) return i;
+        }
+        return 0;
+    }
+
+    private int findLastIndex(List<Topic> topics, int difficulty) {
+        for (int i = topics.size() - 1; i >= 0; i--) {
+            int d = topics.get(i).getDifficulty() != null ? topics.get(i).getDifficulty() : 3;
+            if (d == difficulty) return i;
+        }
+        return 0;
+    }
+
+    /**
+     * 指定されたユーザーが作成したビンゴカードのリストを取得します。
+     *
+     * @param userId ユーザーID
+     * @return ユーザーが作成したビンゴカードのリスト
+     */
     public List<BingoCard> getCardsByUser(String userId) {
         return bingoCardRepository.findByUserId(userId);
     }
 
+    /**
+     * 全てのビンゴカードのリストを取得します。
+     *
+     * @return 全ビンゴカードのリスト
+     */
     public List<BingoCard> getAllCards() {
         return bingoCardRepository.findAll();
     }
 
+    /**
+     * 指定されたカードIDのビンゴカードを取得します。
+     *
+     * @param cardId ビンゴカードID
+     * @return ビンゴカード情報（Optional）
+     */
     public Optional<BingoCard> getCard(UUID cardId) {
         return bingoCardRepository.findById(cardId);
     }
 
+    /**
+     * 指定されたビンゴカードのマスの状態を更新します。
+     *
+     * @param cardId ビンゴカードID
+     * @param index  マスのインデックス (0〜24)
+     * @param status 新しい状態 (true: 穴あき, false: 穴なし)
+     * @return 更新されたビンゴカード
+     * @throws IllegalArgumentException カードが存在しない、またはインデックスが不正な場合
+     * @throws IllegalStateException    データが破損している場合
+     */
     public BingoCard updatePunchStatus(UUID cardId, int index, boolean status) {
         BingoCard card = bingoCardRepository.findById(cardId)
                 .orElseThrow(() -> new IllegalArgumentException("Bingo Card not found"));
@@ -154,9 +272,8 @@ public class BingoCardService {
             throw new IllegalArgumentException("Invalid square index. Must be between 0 and 24");
         }
 
-        // 12 is always FREE and always punched
         if (index == 12) {
-            throw new IllegalArgumentException("Cannot modify the center FREE square");
+            throw new IllegalArgumentException("Cannot modify the center square");
         }
 
         String[] statuses = card.getPunchStatus().split(",");
@@ -170,6 +287,14 @@ public class BingoCardService {
         return bingoCardRepository.save(card);
     }
 
+    /**
+     * ユーザー権限でビンゴカードを削除します。
+     *
+     * @param cardId        削除するビンゴカードID
+     * @param requestUserId リクエストを行うユーザーID
+     * @throws IllegalArgumentException カードが存在しない場合
+     * @throws IllegalStateException    リクエストしたユーザーが作成者でない場合
+     */
     public void deleteCard(UUID cardId, String requestUserId) {
         BingoCard card = bingoCardRepository.findById(cardId)
                 .orElseThrow(() -> new IllegalArgumentException("Bingo Card not found"));
@@ -181,6 +306,12 @@ public class BingoCardService {
         bingoCardRepository.delete(card);
     }
 
+    /**
+     * 管理者権限でビンゴカードを強制的に削除します。
+     *
+     * @param cardId 削除するビンゴカードID
+     * @throws IllegalArgumentException カードが存在しない場合
+     */
     public void deleteCardAdmin(UUID cardId) {
         BingoCard card = bingoCardRepository.findById(cardId)
                 .orElseThrow(() -> new IllegalArgumentException("Bingo Card not found"));
