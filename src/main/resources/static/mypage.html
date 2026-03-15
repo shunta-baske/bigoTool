@@ -55,7 +55,7 @@
             </div>
         </div>
 
-        <nav>
+        <nav id="adminNavLink" style="display: none;">
             <a href="admin.html">全お題を見る（管理者用）</a>
         </nav>
     </div>
@@ -69,6 +69,9 @@
                 return;
             }
             document.getElementById('userIdDisplay').innerText = userId;
+            if (userId === 'useradmin') {
+                document.getElementById('adminNavLink').style.display = 'block';
+            }
             fetchMyTopics();
             fetchMyBingoCards();
         };

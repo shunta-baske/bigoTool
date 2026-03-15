@@ -258,17 +258,18 @@
             return total;
         }
 
-        function calcCardTotalDifficulty(card) {
+        function calcCardDifficultySum(card) {
             if (!card.topics) return 0;
             const topicTexts = card.topics.split(',');
-            let totalDifficulty = 0;
+            let total = 0;
             topicTexts.forEach(text => {
                 if (!text || text === '思い出の写真撮影') return;
                 const matched = allTopicsCache.find(t => t.content.replace(',', '，') === text || t.content === text);
-                if (matched) totalDifficulty += (matched.difficulty || 3); // デフォルト難易度は3
+                if (matched) total += (matched.difficulty || 3);
             });
-            return totalDifficulty;
+            return total;
         }
+
 
         function renderBingoCards(cards) {
             const listDiv = document.getElementById('bingoCardList');
@@ -285,8 +286,8 @@
 
                 const contentText = document.createElement('span');
                 const totalAmount = calcCardTotalAmount(card);
-                const totalDifficulty = calcCardTotalDifficulty(card);
-                contentText.innerText = `ビンゴカード #${index + 1} (作成者: ${card.user.id}) ／ お題合計金額: ${totalAmount}円 ／ 難易度合計: ☆${totalDifficulty}`;
+                const diffSum = calcCardDifficultySum(card);
+                contentText.innerText = `ビンゴカード #${index + 1} (作成者: ${card.user.id}) ／ 難易度合計: ☆${diffSum} ／ お題合計金額: ${totalAmount}円`;
 
                 item.appendChild(contentText);
 
