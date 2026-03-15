@@ -60,47 +60,42 @@ public class BingoCardService {
         Map<Integer, List<Topic>> difficultyBuckets = buildDifficultyBuckets(allTopics);
 
         List<Integer> availableDifficulties = new ArrayList<>();
+        int totalAvailable = 0;
         for (int i = 1; i <= 5; i++) {
-            if (!difficultyBuckets.get(i).isEmpty()) {
+            List<Topic> filteredBucket = difficultyBuckets.get(i).stream()
+                    .filter(t -> !excludeIds.contains(t.getId()))
+                    .toList();
+            difficultyBuckets.put(i, new ArrayList<>(filteredBucket)); // Update bucket to only contain available topics
+            if (!filteredBucket.isEmpty()) {
                 availableDifficulties.add(i);
+                totalAvailable += filteredBucket.size();
             }
+        }
+
+        if (totalAvailable < 24) {
+             throw new IllegalStateException("Not enough unique topics available to generate a bingo card. Expected at least 24, but found " + totalAvailable);
         }
 
         List<Topic> selectedTopics = new ArrayList<>();
         int bucketIndex = 0;
         Set<UUID> usedTopicIds = new HashSet<>(excludeIds);
-        boolean canEnsureUnique = (allTopics.size() - excludeIds.size()) >= 24;
 
         while (selectedTopics.size() < 24) {
+            // Check and clean up empty buckets from availableDifficulties
+            availableDifficulties.removeIf(diff -> difficultyBuckets.get(diff).isEmpty());
+            
             if (availableDifficulties.isEmpty()) {
-                for (int i = 1; i <= 5; i++) {
-                    if (!difficultyBuckets.get(i).isEmpty()) {
-                        availableDifficulties.add(i);
-                    }
-                }
-                canEnsureUnique = false;
+                throw new IllegalStateException("Not enough topics available (unexpected empty buckets).");
             }
 
             int diff = availableDifficulties.get(bucketIndex % availableDifficulties.size());
             List<Topic> bucket = difficultyBuckets.get(diff);
 
-            List<Topic> availableInBucket = bucket;
-            if (canEnsureUnique) {
-                availableInBucket = bucket.stream()
-                        .filter(t -> !usedTopicIds.contains(t.getId()))
-                        .toList();
-
-                if (availableInBucket.isEmpty()) {
-                    availableDifficulties.remove(Integer.valueOf(diff));
-                    continue;
-                }
-            }
-
-            Topic randomTopic = availableInBucket.get(random.nextInt(availableInBucket.size()));
+            Topic randomTopic = bucket.get(random.nextInt(bucket.size()));
             selectedTopics.add(randomTopic);
-            if (canEnsureUnique) {
-                usedTopicIds.add(randomTopic.getId());
-            }
+            usedTopicIds.add(randomTopic.getId());
+            bucket.remove(randomTopic); // Remove to prevent selection again
+
             bucketIndex++;
         }
 
@@ -163,8 +158,8 @@ public class BingoCardService {
                 });
 
         List<Topic> allTopics = topicRepository.findAll();
-        if (allTopics.isEmpty()) {
-            throw new IllegalStateException("Cannot generate Bingo card: No topics available");
+        if (allTopics.size() < 24) {
+            throw new IllegalStateException("Cannot generate Bingo card: At least 24 topics required.");
         }
 
         Random random = new Random();
@@ -177,7 +172,15 @@ public class BingoCardService {
         for (Topic t : topics1) {
             usedIds1.add(t.getId());
         }
-        List<Topic> topics2 = selectTopics(allTopics, usedIds1, random);
+        
+        List<Topic> topics2;
+        try {
+            topics2 = selectTopics(allTopics, usedIds1, random);
+        } catch (IllegalStateException e) {
+            // もし残りのユニークなトピックが24未満でエラーになった場合は
+            // 2枚目は重複を許して（ただし2枚目のカード内で重複しないよう）再選択する
+             topics2 = selectTopics(allTopics, Collections.emptySet(), random);
+        }
 
         // 難易度合計を計算
         int sum1 = topics1.stream().mapToInt(t -> t.getDifficulty() != null ? t.getDifficulty() : 3).sum();
