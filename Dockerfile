@@ -5,6 +5,10 @@ COPY .mvn/ .mvn
 COPY mvnw pom.xml ./
 # Make the wrapper executable
 RUN chmod +x ./mvnw
+
+# Prevent OOM on Render Free Tier
+ENV MAVEN_OPTS="-Xmx256m"
+
 # Download dependencies
 RUN ./mvnw dependency:go-offline
 COPY src ./src
